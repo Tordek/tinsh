@@ -20,8 +20,15 @@ void parse_commands(struct command_line *command_line)
         command_line->commands = realloc(command_line->commands,
                                          sizeof(struct command) * (command_line->command_count + 1));
 
-        command_line->commands[command_line->command_count].executable = malloc(MAXLINE);
-        result = fgets(command_line->commands[command_line->command_count].executable, MAXLINE, stdin);
+        command_line->commands[command_line->command_count].argv = NULL;
+        command_line->commands[command_line->command_count].argc = 0;
+        command_line->commands[command_line->command_count].argv = realloc(
+            command_line->commands[command_line->command_count].argv,
+            sizeof(char *) * (command_line->commands[command_line->command_count].argc + 1));
+        command_line->commands[command_line->command_count].argv[
+            command_line->commands[command_line->command_count].argc] = malloc(MAXLINE);        
+        result = fgets(command_line->commands[command_line->command_count].argv[command_line->commands[command_line->command_count].argc], MAXLINE, stdin);
+        command_line->commands[command_line->command_count].argc += 1;
         command_line->command_count++;
     } while (0); // Just read once for now.
 }
@@ -36,7 +43,7 @@ void free_commands(struct command_line *command_line)
 
     for (int i = 0; i < command_line->command_count; ++i)
     {
-        free(command_line->commands[i].executable);
+        free(command_line->commands[i].argv);
     }
 
     free(command_line->commands);
@@ -53,7 +60,11 @@ void print_commands(struct command_line *command_line)
     printf("  commands: [\n");
     for (int i = 0; i < command_line->command_count; ++i)
     {
-        printf("    %s\n", command_line->commands[i].executable);
+        printf("    ");
+        for (int j = 0; j < command_line->commands[i].argc; ++i)
+        {
+            printf("%s", command_line->commands[i].argv[j]);
+        }
     }
     printf("  ]\n");
     printf("}\n");
@@ -65,6 +76,7 @@ int main(int argc, char *argv[])
 
     parse_commands(&command_line);
     print_commands(&command_line);
+    free_commands(&command_line);
 
     return 0;
 }

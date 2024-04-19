@@ -3,8 +3,8 @@
  */
 struct command
 {
-    char *executable;
-    char **params;
+    int argc;
+    char **argv;
 };
 
 /**
