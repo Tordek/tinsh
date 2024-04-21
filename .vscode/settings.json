@@ -1,5 +1,6 @@
 {
   "files.associations": {
-    "tinsh.h": "c"
+    "tinsh.h": "c",
+    "wait.h": "c"
   }
 }
