@@ -1,14 +1,15 @@
-/**
- * A command: executable filename and parameters.
- */
-struct command
+enum command_line_token_type
 {
-    int argc;
-    char **argv;
+    NONE,
+    SPACES,
+    REDIRECT_IN,
+    REDIRECT_OUT,
+    PARAM,
+    PIPE,
 };
 
 /**
- * A command line: a series of commands, and possibly redirections. 
+ * A command line: a series of commands, and possibly redirections.
  */
 struct command_line
 {
@@ -17,3 +18,22 @@ struct command_line
     int command_count;
     struct command *commands;
 };
+
+/**
+ * A command: executable filename and parameters.
+ */
+struct command
+{
+    int length;
+    char **content;
+};
+
+struct command_line_token
+{
+    enum command_line_token_type type;
+    int length;
+    int size;
+    char *content;
+};
+
+
