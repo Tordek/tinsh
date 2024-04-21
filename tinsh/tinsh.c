@@ -34,6 +34,11 @@ static void append_to_command(struct command *command, char *token)
     command->content[command->length - 1] = token;
 }
 
+static int is_eol(int c)
+{
+    return c == EOF || c == '\n' || c == ';';
+}
+
 /**
  * Consume a series of spaces.
  */
@@ -48,27 +53,26 @@ static int parse_spaces(struct command_line_token *token)
     {
         int c = fgetc(stdin);
 
-        if (c == EOF || c == '\n')
+        if (is_eol(c))
         {
-            return 1;
+            return 0;
         }
 
         if (c != ' ')
         {
             ungetc(c, stdin);
             end_token(token);
-            return 1;
+            return 0;
         }
 
         append_to_token(token, c);
     }
 }
 
-static int is_valid_in_identifier(int c)
-{
-    return !(c == EOF || c == '\n' || c == ' ' || c == '<' || c == '>' || c == '|');
-}
-
+/**
+ * Parses a > or <, and handles what comes next: possibly a space, followed by
+ * the target.
+ */
 static int parse_redirect(struct command_line_token *token)
 {
     int direction = fgetc(stdin);
@@ -96,9 +100,12 @@ static int parse_redirect(struct command_line_token *token)
     } while (0);
 
     token->type = direction == '<' ? REDIRECT_IN : REDIRECT_OUT;
-    return 1;
+    return 0;
 }
 
+/**
+ * Parses a |
+ */
 static int parse_pipe(struct command_line_token *token)
 {
     fgetc(stdin); // discard
@@ -106,9 +113,20 @@ static int parse_pipe(struct command_line_token *token)
     token->size = 0;
     token->length = 0;
     token->content = NULL;
-    return 1;
+    return 0;
 }
 
+/**
+ * Valid characters outside quotes
+ */
+static int is_valid_in_identifier(int c)
+{
+    return !(is_eol(c) || c == ' ' || c == '<' || c == '>' || c == '|' || c == '"');
+}
+
+/**
+ * Helper for parse_param: Stuff inside quotes can contain special characters.
+ */
 static int parse_quoted(struct command_line_token *token)
 {
     for (;;)
@@ -122,13 +140,16 @@ static int parse_quoted(struct command_line_token *token)
 
         if (c == '"')
         {
-            return;
+            return 0;
         }
 
         append_to_token(token, c);
     }
 }
 
+/**
+ * Parses a param, ends on any character that can't be part of a param.
+ */
 static int parse_param(struct command_line_token *token)
 {
     token->size = 32;
@@ -140,12 +161,6 @@ static int parse_param(struct command_line_token *token)
     {
         int c = fgetc(stdin);
 
-        if (!is_valid_in_identifier(c))
-        {
-            ungetc(c, stdin);
-            break;
-        }
-
         if (c == '"')
         {
             int result = parse_quoted(token);
@@ -156,11 +171,28 @@ static int parse_param(struct command_line_token *token)
             continue;
         }
 
+        if (!is_valid_in_identifier(c))
+        {
+            ungetc(c, stdin);
+            end_token(token);
+            return 0;
+        }
+
         append_to_token(token, c);
     }
+}
 
-    end_token(token);
-    return 1;
+/**
+ * Parses whatever can end a line: \n, EOF, ;.
+ */
+static int parse_eol(struct command_line_token *token)
+{
+    fgetc(stdin); // discard
+    token->type = EOL;
+    token->size = 0;
+    token->length = 0;
+    token->content = NULL;
+    return 0;
 }
 
 /**
@@ -168,22 +200,19 @@ static int parse_param(struct command_line_token *token)
  *
  * Returns:
  * -1 on error (premature eof)
- * 0 when there is nothing to read.
- * 1 when reading a token correctly.
+ * 0 when reading a token correctly.
  */
 static int parse_token(struct command_line_token *token)
 {
     int c = fgetc(stdin);
-
-    // End parsing
-    if (c == '\n' || c == EOF)
-    {
-        return 0;
-    }
-
     ungetc(c, stdin);
     switch (c)
     {
+    case EOF:
+    case '\n':
+    case ';':
+        return parse_eol(token);
+
     case ' ':
         return parse_spaces(token);
 
@@ -209,13 +238,15 @@ static int parse_command(struct command_line *command_line)
     {
         struct command_line_token token;
         int result = parse_token(&token);
-        if (result == 0)
+        if (result == -1)
         {
-            return 0;
+            return -1;
         }
 
         switch (token.type)
         {
+        case EOL:
+            return 0;
         // Spaces do nothing.
         case SPACES:
             free(token.content);
@@ -259,16 +290,26 @@ void parse_commands(struct command_line *command_line)
     command_line->command_count = 0;
     command_line->commands = NULL;
 
-    while (parse_command(command_line))
-        ;
+    for (;;)
+    {
+        parse_command(command_line);
+    }
 }
 
-// /**
-//  * Release memory used when parsing
-//  */
-// void free_commands(struct command_line *command_line)
-// {
-// }
+/**
+ * Release memory used when parsing
+ */
+void free_commands(struct command_line *command_line)
+{
+    for (int i = 0; i < command_line->command_count; ++i)
+    {
+        for (int j = 0; j < command_line->commands[i].length; ++j)
+        {
+            free(command_line->commands[i].content[j]);
+        }
+        free(command_line->commands);
+    }
+}
 
 /**
  * Debugging: print out the command line
@@ -294,10 +335,13 @@ void print_commands(struct command_line *command_line)
 
 int main(int argc, char *argv[])
 {
-    struct command_line command_line;
-    parse_commands(&command_line);
-    print_commands(&command_line);
-    // free_commands(&command_line);
+    for (;;)
+    {
+        struct command_line command_line;
+        parse_commands(&command_line);
+        print_commands(&command_line);
+        free_commands(&command_line);
+    }
 
     return 0;
 }

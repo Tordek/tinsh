@@ -1,7 +1,7 @@
 enum command_line_token_type
 {
-    NONE,
     SPACES,
+    EOL,
     REDIRECT_IN,
     REDIRECT_OUT,
     PARAM,
