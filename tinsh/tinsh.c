@@ -14,7 +14,7 @@ void print_commands(struct command_line *command_line)
     printf("{\n");
     printf("  stdin: %s\n", command_line->stdin);
     printf("  stdout: %s\n", command_line->stdout);
-    printf("  commands: [\n");
+    printf("  commands: %d [\n", command_line->command_count);
     for (int i = 0; i < command_line->command_count; ++i)
     {
         printf("   %d ", i);
@@ -33,23 +33,55 @@ void print_commands(struct command_line *command_line)
  */
 void run_commands(struct command_line *command_line)
 {
+    int(*pipes)[2];
+    pipes = malloc(sizeof(int) * 2 * command_line->command_count - 1);
+
+    for (int i = 0; i < command_line->command_count - 1; ++i)
+    {
+        pipe(pipes[i]);
+    }
+
     for (int i = 0; i < command_line->command_count; ++i)
     {
         int pid = fork();
 
         if (pid == 0)
         {
-            execvpe(command_line->commands[i].content[0],
-                    command_line->commands[i].content,
-                    command_line->env);
+            if (i != command_line->command_count - 1)
+            {
+                close(STDOUT_FILENO);
+                dup(pipes[i][1]);
+            }
+
+            if (i != 0)
+            {
+                close(STDIN_FILENO);
+                dup(pipes[i - 1][0]);
+            }
+
+            for (int i = 0; i < command_line->command_count - 1; ++i)
+            {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
+            }
+
+            execve(command_line->commands[i].content[0],
+                   command_line->commands[i].content,
+                   command_line->env);
             perror("execve");
             exit(1);
         }
-        else
-        {
-            waitpid(pid, NULL, 0);
-        }
     }
+
+    for (int i = 0; i < command_line->command_count - 1; ++i)
+    {
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+    free(pipes);
+
+    int res;
+    wait(&res);
 }
 
 int main(int argc, char *argv[])
@@ -64,7 +96,6 @@ int main(int argc, char *argv[])
         {
             break;
         }
-        print_commands(&command_line);
         run_commands(&command_line);
         free_commands(&command_line);
     }

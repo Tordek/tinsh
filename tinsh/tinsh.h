@@ -18,6 +18,7 @@ struct command_line
     char *stdin;
     char *stdout;
     char **env;
+    int env_count;
     int command_count;
     struct command *commands;
 };

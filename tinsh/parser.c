@@ -281,6 +281,20 @@ static int parse_command(struct command_line *command_line)
       }
       return 0;
 
+    // On pipe, start a new command.
+    case TOK_PIPE:
+      if (command->length > 0)
+      {
+        command_line->command_count++;
+      }
+      return 1;
+
+    case TOK_ENV:
+      command_line->env[command_line->env_count] = token.content;
+      command_line->env_count++;
+      command_line->env = realloc(command_line->env, sizeof(char *) * (command_line->env_count + 1));
+      command_line->env[command_line->env_count] = NULL;
+
     // Spaces do nothing.
     case TOK_SPACES:
       free(token.content);
@@ -294,11 +308,6 @@ static int parse_command(struct command_line *command_line)
 
     case TOK_REDIRECT_OUT:
       command_line->stdin = token.content;
-      break;
-
-    // On pipe, start a new command.
-    case TOK_PIPE:
-      return 1;
       break;
 
     // Any other param just gets put in the list.
@@ -321,6 +330,7 @@ int parse_commands(struct command_line *command_line)
   command_line->stdout = NULL;
   command_line->env = malloc(sizeof(char *));
   command_line->env[0] = NULL;
+  command_line->env_count = 0;
   command_line->command_count = 0;
   command_line->commands = NULL;
 
@@ -351,6 +361,6 @@ void free_commands(struct command_line *command_line)
     {
       free(command_line->commands[i].content[j]);
     }
-    free(command_line->commands);
   }
+  free(command_line->commands);
 }
