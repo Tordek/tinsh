@@ -4,7 +4,7 @@
 #include "tinsh.h"
 #include "parser.h"
 #include <sys/types.h>
-#include <sys/wait.h> 
+#include <sys/wait.h>
 
 /**
  * Debugging: print out the command line
@@ -39,8 +39,11 @@ void run_commands(struct command_line *command_line)
 
         if (pid == 0)
         {
-            execv(command_line->commands[i].content[0],
-                  command_line->commands[i].content);
+            execvpe(command_line->commands[i].content[0],
+                    command_line->commands[i].content,
+                    command_line->env);
+            perror("execve");
+            exit(1);
         }
         else
         {
@@ -55,8 +58,13 @@ int main(int argc, char *argv[])
     {
         struct command_line command_line;
         printf("> ");
-        parse_commands(&command_line);
-        // print_commands(&command_line);
+        int result = parse_commands(&command_line);
+
+        if (result)
+        {
+            break;
+        }
+        print_commands(&command_line);
         run_commands(&command_line);
         free_commands(&command_line);
     }

@@ -1,11 +1,13 @@
 enum command_line_token_type
 {
-    SPACES,
-    EOL,
-    REDIRECT_IN,
-    REDIRECT_OUT,
-    PARAM,
-    PIPE,
+    TOK_EOF,
+    TOK_EOL,
+    TOK_SPACES,
+    TOK_REDIRECT_IN,
+    TOK_REDIRECT_OUT,
+    TOK_PARAM,
+    TOK_PIPE,
+    TOK_ENV
 };
 
 /**
@@ -15,6 +17,7 @@ struct command_line
 {
     char *stdin;
     char *stdout;
+    char **env;
     int command_count;
     struct command *commands;
 };
