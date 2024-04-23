@@ -79,7 +79,7 @@ static int parse_redirect(struct command_line_token *token)
   int direction = fgetc(stdin);
 
   // Find the target: discard spaces and retry
-  do
+  for (;;)
   {
     int result = parse_token(token, 0);
 
@@ -88,17 +88,18 @@ static int parse_redirect(struct command_line_token *token)
       return -1;
     }
 
-    if (token->type == TOK_SPACES)
+    if (token->type != TOK_SPACES)
     {
-      free(token->content);
-      continue;
+      break;
     }
 
-    if (token->type != TOK_PARAM)
-    {
-      return -1;
-    }
-  } while (0);
+    free(token->content);
+  };
+
+  if (token->type != TOK_PARAM)
+  {
+    return -1;
+  }
 
   token->type = direction == '<' ? TOK_REDIRECT_IN : TOK_REDIRECT_OUT;
   return 0;
@@ -307,7 +308,7 @@ static int parse_command(struct command_line *command_line)
       break;
 
     case TOK_REDIRECT_OUT:
-      command_line->stdin = token.content;
+      command_line->stdout = token.content;
       break;
 
     // Any other param just gets put in the list.

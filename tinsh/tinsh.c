@@ -51,12 +51,16 @@ void run_commands(struct command_line *command_line)
             {
                 close(STDOUT_FILENO);
                 dup(pipes[i][1]);
+            } else if (command_line->stdout) {
+                freopen(command_line->stdout, "w", stdout);
             }
 
             if (i != 0)
             {
                 close(STDIN_FILENO);
                 dup(pipes[i - 1][0]);
+            } else if (command_line->stdin) {
+                freopen(command_line->stdin, "r", stdin);
             }
 
             for (int i = 0; i < command_line->command_count - 1; ++i)
@@ -97,6 +101,7 @@ int main(int argc, char *argv[])
             break;
         }
         run_commands(&command_line);
+        // print_commands(&command_line);
         free_commands(&command_line);
     }
 
