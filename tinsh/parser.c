@@ -1,8 +1,8 @@
 
-#include "parser.h"
-#include "tinsh.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "tinsh.h"
+#include "parser.h"
 
 static int parse_token(struct command_line_token *token, int in_env);
 
